@@ -41,3 +41,4 @@ DROP TABLE IF EXISTS societies CASCADE;
 -- 4. (Optional) Wipe test user logins from Supabase Auth
 -- Uncomment the line below if you also want to remove all created auth users:
 -- DELETE FROM auth.users;
+

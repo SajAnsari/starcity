@@ -28,9 +28,13 @@ export default function RegisterPage() {
     try {
       const supabase = createClient();
 
-      // Attempt Supabase Auth Sign Up with default MEMBER role
-      try {
-        const { data: signUpData } = await supabase.auth.signUp({
+      // Check if real Supabase URL is configured
+      const isSupabaseConfigured =
+        process.env.NEXT_PUBLIC_SUPABASE_URL &&
+        !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder');
+
+      if (isSupabaseConfigured) {
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -45,19 +49,29 @@ export default function RegisterPage() {
           },
         });
 
-        // If user was created in Supabase, insert member record as MEMBER
-        if (signUpData?.user) {
-          const { data: soc } = await supabase.from('societies').select('id').limit(1).maybeSingle();
-          const societyId = (soc as any)?.id || 'a0000000-0000-0000-0000-000000000001';
-          await supabase.from('society_members').insert({
-            society_id: societyId,
-            user_id: signUpData.user.id,
-            role: 'MEMBER',
-            status: 'ACTIVE',
-          } as any);
+        if (signUpError) {
+          setErrorMsg(`Supabase error: ${signUpError.message}`);
+          setLoading(false);
+          return;
         }
-      } catch {
-        // Fallback for demo preview
+
+        // If trigger didn't insert into society_members, fallback insert
+        if (signUpData?.user) {
+          try {
+            const { data: soc } = await supabase.from('societies').select('id').limit(1).maybeSingle();
+            const societyId = (soc as any)?.id;
+            if (societyId) {
+              await (supabase.from('society_members') as any).insert({
+                society_id: societyId,
+                user_id: signUpData.user.id,
+                role: 'MEMBER',
+                status: 'ACTIVE',
+              });
+            }
+          } catch {
+            // Trigger may have already handled this
+          }
+        }
       }
 
       // Record in local in-memory store as MEMBER
