@@ -76,6 +76,19 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
+## 👥 Role-Based Access Control (RBAC) & User Management
+
+Starcity enforces 3 core user roles:
+- **Admin**: Full control across society master data, financial ledgers, settings, and **User Management** (`/users`).
+- **Secretary**: Operational management including maintenance, buildings & flats, tickets, notice boards, and financial reports.
+- **Member**: Resident access for viewing their own flat details, paying maintenance via UPI QR, raising tickets, and reading notices.
+
+> **Default Role on Signup**: All newly registered users are assigned the **Member** (`MEMBER`) role by default. Only an **Admin** can elevate or modify a user's role via the User Management portal.
+
+---
+
 ## 📦 Deployment Runbook
 
 See [`docs/DEPLOYMENT_CHECKLIST.md`](docs/DEPLOYMENT_CHECKLIST.md) for step-by-step instructions on setting up Supabase migrations and deploying to Vercel.
+
+

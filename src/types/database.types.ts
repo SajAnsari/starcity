@@ -6,7 +6,8 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export type UserRole = 'SUPER_ADMIN' | 'SOCIETY_ADMIN' | 'COMMITTEE' | 'TREASURER' | 'RESIDENT';
+export type UserRole = 'ADMIN' | 'SECRETARY' | 'MEMBER' | 'SUPER_ADMIN' | 'SOCIETY_ADMIN' | 'COMMITTEE' | 'TREASURER' | 'RESIDENT';
+export type AppRole = 'ADMIN' | 'SECRETARY' | 'MEMBER';
 export type MemberStatus = 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
 export type OccupancyType = 'OWNER' | 'TENANT';
 export type BillingType = 'FLAT_RATE' | 'PER_SQFT' | 'HYBRID';

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Building2, User, Mail, Phone, KeyRound, Home, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { registerNewMemberInMemory } from '@/lib/user-actions';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -27,9 +28,9 @@ export default function RegisterPage() {
     try {
       const supabase = createClient();
 
-      // Attempt Supabase Auth Sign Up
+      // Attempt Supabase Auth Sign Up with default MEMBER role
       try {
-        await supabase.auth.signUp({
+        const { data: signUpData } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -39,20 +40,43 @@ export default function RegisterPage() {
               flat_number: flatNumber,
               wing: wing,
               occupancy_type: occupancyType,
+              role: 'MEMBER', // Strictly MEMBER role by default
             },
           },
         });
+
+        // If user was created in Supabase, insert member record as MEMBER
+        if (signUpData?.user) {
+          const { data: soc } = await supabase.from('societies').select('id').limit(1).maybeSingle();
+          const societyId = (soc as any)?.id || 'a0000000-0000-0000-0000-000000000001';
+          await supabase.from('society_members').insert({
+            society_id: societyId,
+            user_id: signUpData.user.id,
+            role: 'MEMBER',
+            status: 'ACTIVE',
+          } as any);
+        }
       } catch {
         // Fallback for demo preview
       }
 
-      // Set demo cookie so user can immediately access the portal
+      // Record in local in-memory store as MEMBER
+      registerNewMemberInMemory({
+        fullName,
+        email,
+        phone,
+        wing,
+        flatNumber,
+        occupancyType,
+      });
+
+      // Set session cookie strictly as MEMBER
       document.cookie = `starcity_demo_user=${encodeURIComponent(
         JSON.stringify({
           email,
           name: fullName,
           flat: flatNumber,
-          role: occupancyType === 'OWNER' ? 'RESIDENT_OWNER' : 'RESIDENT_TENANT',
+          role: 'MEMBER',
         })
       )}; path=/; max-age=86400`;
 

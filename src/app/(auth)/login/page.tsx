@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Building2, KeyRound, Mail, ArrowRight, ShieldCheck, UserPlus, Zap } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { normalizeAppRole } from '@/lib/user-actions';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -31,11 +32,20 @@ export default function LoginPage() {
     try {
       const supabase = createClient();
       try {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data: authData, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
-        if (!error) {
+        if (!error && authData?.user) {
+          // Fetch user role from society_members
+          const { data: member } = await supabase
+            .from('society_members')
+            .select('role')
+            .eq('user_id', authData.user.id)
+            .maybeSingle();
+
+          const assignedRole = normalizeAppRole((member as any)?.role || authData.user.user_metadata?.role);
+          setDemoSession(email, assignedRole);
           router.push('/dashboard');
           router.refresh();
           return;
@@ -44,8 +54,14 @@ export default function LoginPage() {
         // Fallback to local demo session if Supabase is offline/placeholder
       }
 
-      // Default demo login fallback for seamless local verification
-      setDemoSession(email, 'SOCIETY_ADMIN');
+      // Default role fallback: ONLY admin email gets ADMIN; all others default to MEMBER
+      let fallbackRole: 'ADMIN' | 'SECRETARY' | 'MEMBER' = 'MEMBER';
+      if (email.toLowerCase().includes('admin')) {
+        fallbackRole = 'ADMIN';
+      } else if (email.toLowerCase().includes('secretary')) {
+        fallbackRole = 'SECRETARY';
+      }
+      setDemoSession(email, fallbackRole);
       router.push('/dashboard');
       router.refresh();
     } catch (err: any) {
@@ -55,7 +71,7 @@ export default function LoginPage() {
   };
 
   // Instant 1-click role login handler
-  const instantLoginAs = (demoEmail: string, roleName: string) => {
+  const instantLoginAs = (demoEmail: string, roleName: 'ADMIN' | 'SECRETARY' | 'MEMBER') => {
     setLoading(true);
     setDemoSession(demoEmail, roleName);
     router.push('/dashboard');
@@ -89,7 +105,7 @@ export default function LoginPage() {
           </div>
           <button
             type="button"
-            onClick={() => instantLoginAs('admin@starcity.com', 'SOCIETY_ADMIN')}
+            onClick={() => instantLoginAs('admin@starcity.com', 'ADMIN')}
             className="rounded-lg bg-blue-600 px-2.5 py-1 text-xs font-bold text-white shadow-sm hover:bg-blue-700"
           >
             Instant Enter →
@@ -150,40 +166,32 @@ export default function LoginPage() {
         <div className="border-t border-slate-100 pt-5">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 mb-3">
             <ShieldCheck className="h-4 w-4 text-blue-600" />
-            1-Click Quick Role Switch (Click to Enter):
+            1-Click Quick Role Switch (Admin, Secretary, Members):
           </div>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <button
               type="button"
-              onClick={() => instantLoginAs('admin@starcity.com', 'SOCIETY_ADMIN')}
+              onClick={() => instantLoginAs('admin@starcity.com', 'ADMIN')}
               className="rounded-lg border border-slate-200 bg-slate-50 p-2.5 text-left hover:bg-blue-50 hover:border-blue-300 transition"
             >
-              <span className="font-bold block text-slate-800">👑 Society Admin</span>
+              <span className="font-bold block text-slate-800">👑 Admin</span>
               <span className="text-[11px] text-slate-400">admin@starcity.com</span>
             </button>
             <button
               type="button"
-              onClick={() => instantLoginAs('treasurer@starcity.com', 'TREASURER')}
+              onClick={() => instantLoginAs('secretary@starcity.com', 'SECRETARY')}
               className="rounded-lg border border-slate-200 bg-slate-50 p-2.5 text-left hover:bg-blue-50 hover:border-blue-300 transition"
             >
-              <span className="font-bold block text-slate-800">💰 Treasurer</span>
-              <span className="text-[11px] text-slate-400">treasurer@starcity.com</span>
+              <span className="font-bold block text-slate-800"> Secretary</span>
+              <span className="text-[11px] text-slate-400">secretary@starcity.com</span>
             </button>
             <button
               type="button"
-              onClick={() => instantLoginAs('committee@starcity.com', 'COMMITTEE')}
-              className="rounded-lg border border-slate-200 bg-slate-50 p-2.5 text-left hover:bg-blue-50 hover:border-blue-300 transition"
+              onClick={() => instantLoginAs('member@starcity.com', 'MEMBER')}
+              className="rounded-lg border border-slate-200 bg-slate-50 p-2.5 text-left hover:bg-blue-50 hover:border-blue-300 transition col-span-2"
             >
-              <span className="font-bold block text-slate-800">🏛️ Committee</span>
-              <span className="text-[11px] text-slate-400">committee@starcity.com</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => instantLoginAs('resident101@starcity.com', 'RESIDENT')}
-              className="rounded-lg border border-slate-200 bg-slate-50 p-2.5 text-left hover:bg-blue-50 hover:border-blue-300 transition"
-            >
-              <span className="font-bold block text-slate-800">🏠 Resident (A-101)</span>
-              <span className="text-[11px] text-slate-400">resident101@starcity.com</span>
+              <span className="font-bold block text-slate-800"> Members (Default Resident Role)</span>
+              <span className="text-[11px] text-slate-400">member@starcity.com • Standard resident access</span>
             </button>
           </div>
         </div>
